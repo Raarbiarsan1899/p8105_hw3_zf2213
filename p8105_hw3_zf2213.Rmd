@@ -1,0 +1,48 @@
+---
+title: "P8105 Homework 3"
+author: 'Zanis Fang, UID: ZF2213'
+date: "10/4/2018"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# ggplot2 tibble dplyr tidyr ... etc.
+library(tidyverse)
+
+#install p8105.datasets if not already installed
+if (!"p8105.datasets" %in% installed.packages()) {
+	devtools::install_github("p8105/p8105.datasets")
+}
+
+```
+
+## Problem 1
+
+### Data loading
+
+```{r}
+brfss <- p8105.datasets::brfss_smart2010 %>%
+         # Overall health topic
+         filter(Topic == "Overall Health")
+         
+```
+
+## Problem 2
+
+### Data loading
+
+```{r}
+instacart <- p8105.datasets::instacart
+```
+
+## Problem 3
+
+### Data loading
+
+```{r}
+ny_noaa <- p8105.datasets::ny_noaa
+```
+
+
