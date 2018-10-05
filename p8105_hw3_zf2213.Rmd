@@ -11,10 +11,18 @@ knitr::opts_chunk$set(echo = TRUE)
 # ggplot2 tibble dplyr tidyr ... etc.
 library(tidyverse)
 
-#install p8105.datasets if not already installed
+# install p8105.datasets if not already installed
 if (!"p8105.datasets" %in% installed.packages()) {
 	devtools::install_github("p8105/p8105.datasets")
 }
+
+# install ggrepel if not already installed
+if (!"ggrepel" %in% installed.packages()) {
+ devtools::install_github("slowkow/ggrepel")
+}
+
+
+
 
 ```
 
@@ -114,9 +122,52 @@ brfss %>% group_by(year, state, response) %>%
 ```{r}
 # load data
 instacart <- p8105.datasets::instacart
-             
+
+
 
 ```
+
+This dataset has 1384617 entries. All the entries are the order information from registered customers. Each row describes an item ordered by a customer. For item, there are columns describe the name, department, aisle, and corresponding ID of the item. For order include the information about the customer ID, nth order from the customer, days since last order (frequency of order), time of the order in a week, time of the order in a day.
+
+*Q1. How many aisles are there, and which aisles are the most items ordered from?*
+
+```{r}
+# list how many distinct aisles
+instacart %>% distinct(aisle) %>% nrow()
+
+# 
+instacart %>% group_by(aisle) %>% summarize(n_order = n()) %>% arrange(desc(n_order))
+ 
+
+
+```
+
+There are 134 aisles. Fresh vegetables and fresh fruits aisles are ordered the most.
+
+*Q2. Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.*
+
+```{r}
+instacart %>%
+ group_by(aisle, department) %>%
+ summarize(n_order = n()) %>%
+ group_by(department) %>%
+ arrange(n_order) %>% 
+ mutate(id = 1:n()) %>%
+ ggplot(aes(x = department, y = id, size = n_order)) +
+   geom_point() +
+   ggrepel::geom_text_repel(aes(label = aisle))
+
+
+
+```
+
+
+*Q3. Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”*
+
+
+
+*Q4. Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).*
+
 
 ## Problem 3
 
