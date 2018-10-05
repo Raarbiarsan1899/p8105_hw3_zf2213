@@ -47,31 +47,64 @@ brfss <- p8105.datasets::brfss_smart2010 %>%
 *Q1. In 2002, which states were observed at 7 locations?*
 
 ```{r}
-brfss %>% distinct(state, area) %>% 
-          group_by(state) %>% 
+# get year 2002
+brfss %>% filter(year == 2002) %>%
+          # get unique area
+          distinct(state, area) %>%
+          # group by states
+          group_by(state) %>%
+          # number of observations for each state
           summarize(locations = n()) %>%
+          # get states which observed at 7 locations
           filter(locations == 7)
 ```
 
-Connecticut, Montana, New Hampshire, New Mexico, Oregon, Tennessee, Utah are observed at 7 locations.
+Connecticut, Florida, North Carolina are observed at 7 locations.
 
 
 *Q2. Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.*
 
 ```{r}
-brfss %>% group_by(state, year) %>% 
-          summarize(n_obs = n()) %>% 
+# get distinct locations for each year each state
+brfss %>% distinct(year, state, area) %>%
+          # group according to year and state
+          group_by(year, state) %>% 
+          # count the number of observations for each year each state
+          summarize(n_obs = n()) %>%
+          # plot the spaghetti plot
           ggplot(aes(x = year, y = n_obs, color = state)) +
           geom_line() +
+          viridis::scale_color_viridis(
+           name = "state",
+           discrete = TRUE
+          ) +
           theme(legend.position = "none")
 ```
 
-
 *Q3. Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.*
 
+```{r}
+# filter out year 2002, 2006, 2010 in NY state with response "Excellent"
+brfss %>% filter(year %in% c(2002, 2006, 2010), response == "Excellent", state == "NY") %>% 
+          # group according to area
+          group_by(area) %>% 
+          # get mean and sd across three years
+          summarize(mean = mean(data_value), sd = sd(data_value)) %>% 
+          # make a readable table
+          knitr::kable()
+```
+
+Since in Bronx, Erie and Monroe, there were only one observation out of three years, so sd are NAs.
 
 *Q4. For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.*
 
+```{r}
+brfss %>% group_by(year, state, response) %>% 
+          summarize(mean = mean(data_value)) %>% 
+          ggplot(aes(x = year, y = mean, color = state)) + 
+            geom_line() +
+            facet_grid(. ~ response)
+```
 
 
 ## Problem 2
