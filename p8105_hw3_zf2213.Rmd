@@ -183,7 +183,33 @@ instacart %>% filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")
 ### Data loading
 
 ```{r}
-ny_noaa <- p8105.datasets::ny_noaa
+ny_noaa <- p8105.datasets::ny_noaa %>% separate(col = date, into = c("year", "month", "day"), sep = "-") %>% rename(prcp_01mm = prcp, snow_mm = snow, snwd_mm = snwd) %>% mutate(tmax = as.integer(tmax), tmin = as.integer(tmin))
+
+```
+
+*Q1. For snowfall, what are the most commonly observed values? Why?*
+The dataset has many missing values. Most part are zeros. Most area are so warm that no snow can form.
+
+*Q2. Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?*
+
+```{r}
+ny_noaa %>% filter(month %in% c("01", "07")) %>% group_by(year, month) %>% summarize(mean_temp = mean(tmax, na.rm = TRUE)) %>% ggplot(aes(y = mean_temp, x = year)) + geom_point() + facet_grid(. ~ month)
+
+```
+
+*Q3. Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.*
+
+```{r}
+tmax_tmin <- ny_noaa %>% ggplot(aes(x = tmax, y = tmin)) + geom_density_2d()
+
+snf <- ny_noaa %>% filter(snow_mm > 0, snow_mm < 100) %>% 
+                   group_by(year) %>% 
+                   summarize(mean_snow_mm = mean(snow_mm)) %>% 
+                   ggplot(aes(x = year, y = mean_snow_mm)) +
+                     geom_point()
+library(patchwork)
+tmax_tmin + snf
+
 ```
 
 
