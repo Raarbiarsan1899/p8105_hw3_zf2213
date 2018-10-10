@@ -6,7 +6,12 @@ output: github_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+ echo = TRUE,
+ fig.width = 8,
+ fig.asp = .618,
+ out.width = "100%"
+)
 
 # ggplot2 tibble dplyr tidyr ... etc.
 library(tidyverse)
@@ -16,21 +21,14 @@ if (!"p8105.datasets" %in% installed.packages()) {
 	devtools::install_github("p8105/p8105.datasets")
 }
 
-# install ggrepel if not already installed
-if (!"ggrepel" %in% installed.packages()) {
- devtools::install_github("slowkow/ggrepel")
-}
-
-
-
-
 ```
 
 ## Problem 1
 
 ### Data loading
 
-```{r}
+```{r p1_loading_data_brfss}
+# loading data
 brfss <- p8105.datasets::brfss_smart2010 %>%
          # overall health topic
          filter(Topic == "Overall Health") %>% 
@@ -54,7 +52,7 @@ brfss <- p8105.datasets::brfss_smart2010 %>%
 
 *Q1. In 2002, which states were observed at 7 locations?*
 
-```{r}
+```{r p1_q1_state_obs}
 # get year 2002
 brfss %>% filter(year == 2002) %>%
           # get unique area
@@ -64,7 +62,9 @@ brfss %>% filter(year == 2002) %>%
           # number of observations for each state
           summarize(locations = n()) %>%
           # get states which observed at 7 locations
-          filter(locations == 7)
+          filter(locations == 7) %>%
+          # output table
+          knitr::kable()
 ```
 
 Connecticut, Florida, North Carolina are observed at 7 locations.
@@ -72,7 +72,7 @@ Connecticut, Florida, North Carolina are observed at 7 locations.
 
 *Q2. Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.*
 
-```{r}
+```{r p1_q2_spaghetti_plot}
 # get distinct locations for each year each state
 brfss %>% distinct(year, state, area) %>%
           # group according to year and state
@@ -82,16 +82,24 @@ brfss %>% distinct(year, state, area) %>%
           # plot the spaghetti plot
           ggplot(aes(x = year, y = n_obs, color = state)) +
           geom_line() +
+          labs(
+           title = "Unique locations across years for each state",
+           x = "Years",
+           y = "Number of Locations",
+           caption = "Data from the brfss_smart2010"
+          ) +
           viridis::scale_color_viridis(
            name = "state",
            discrete = TRUE
           ) +
-          theme(legend.position = "none")
+          theme(legend.position = "right", plot.title = element_text(hjust = 0.5))
+          
 ```
 
 *Q3. Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.*
 
-```{r}
+```{r p1_q3_table}
+
 # filter out year 2002, 2006, 2010 in NY state with response "Excellent"
 brfss %>% filter(year %in% c(2002, 2006, 2010), response == "Excellent", state == "NY") %>% 
           # group according to area
@@ -106,12 +114,29 @@ Since in Bronx, Erie and Monroe, there were only one observation out of three ye
 
 *Q4. For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.*
 
-```{r}
+```{r p1_q4_multi_spaghetti}
+
+# grouping
 brfss %>% group_by(year, state, response) %>% 
+          # get mean for each combination
           summarize(mean = mean(data_value)) %>% 
+          # plot multiple spaghetti plots
           ggplot(aes(x = year, y = mean, color = state)) + 
             geom_line() +
-            facet_grid(. ~ response)
+            # multi panels
+            facet_grid(. ~ response) +
+            labs(
+              title = "Mean for each state, year across locations",
+              x = "Years",
+              y = "Mean of proportions",
+              caption = "Data from the brfss_smart2010"
+            ) +
+          # make title in the middle
+          theme(plot.title = element_text(hjust = 0.5),
+                # make x tick 45 angle
+                axis.text.x = element_text(angle = 45)
+                )
+          
 ```
 
 
@@ -119,63 +144,110 @@ brfss %>% group_by(year, state, response) %>%
 
 ### Data loading
 
-```{r}
+```{r p2_loading_data}
 # load data
 instacart <- p8105.datasets::instacart
-
-
-
 ```
 
 This dataset has 1384617 entries. All the entries are the order information from registered customers. Each row describes an item ordered by a customer. For item, there are columns describe the name, department, aisle, and corresponding ID of the item. For order include the information about the customer ID, nth order from the customer, days since last order (frequency of order), time of the order in a week, time of the order in a day.
 
 *Q1. How many aisles are there, and which aisles are the most items ordered from?*
 
-```{r}
+```{r p2_q1_aisles}
 # list how many distinct aisles
-instacart %>% distinct(aisle) %>% nrow()
-
-# 
-instacart %>% group_by(aisle) %>% summarize(n_order = n()) %>% arrange(desc(n_order))
+instacart %>% 
+ count(aisle) %>%
+ nrow()
  
 
-
+# get number of aisles
+instacart %>%
+ group_by(aisle) %>%
+ summarize(n_order = n()) %>%
+ arrange(desc(n_order))
+ 
 ```
 
 There are 134 aisles. Fresh vegetables and fresh fruits aisles are ordered the most.
 
 *Q2. Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.*
 
-```{r}
+```{r q2_aisle_plot}
+# package for label points
+library(ggrepel)
+
 instacart %>%
+ # group by aisle
  group_by(aisle) %>%
- summarize(n_order = n()) %>% 
- arrange(n_order) %>% 
- mutate(x_align = row_number() %% 12, y_align = row_number() %/% 12) %>%
- ggplot(aes(x = x_align, y = y_align, size = n_order)) +
-   geom_point() +
-   ggrepel::geom_text_repel(aes(label = aisle))
-
-
-
+ # number of orders for each aisle
+ summarize(n_order = n()) %>%
+ # sort according to number of orders
+ mutate(rank = rank(desc(n_order))) %>% 
+ # plot scatterplot
+ ggplot(aes(x = rank, y = log(n_order))) +
+   # plot points
+   geom_point(size = 4, alpha = 0.5) +
+   # label top 10 points
+   geom_text_repel(aes(label = ifelse(rank < 11, aisle, "")), vjust = 1) + 
+   # range limits
+   ylim(c(5,13)) +
+   # add labels and titles
+   labs(
+    title = "Number of orders for each aisle (order > 20000 are labelled)",
+    x = "Percent rank of aisle order number",
+    y = "Log transformed order numbers",
+    caption = "Data from the instacart"
+    ) +
+   # make title in the middle
+   theme(plot.title = element_text(hjust = 0.5))
+   
 ```
 
+Vegetables, fruits, sparkling water, yogurt, cheese, milk, chips, pretzels, bread, soy are ordered most. All of them are food!
 
 *Q3. Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”*
 
-```{r}
-instacart %>% filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% group_by(aisle, product_name) %>% summarize(n_order = n()) %>% group_by(aisle) %>% filter(n_order == max(n_order)) %>% knitr::kable()
+```{r q3_table}
+instacart %>%
+ # get the three aisle
+ filter(aisle %in% c("baking ingredients",
+                     "dog food care",
+                     "packaged vegetables fruits")) %>%
+ # group according to aisle and products
+ group_by(aisle, product_name) %>%
+ # number of orders for each item
+ summarize(number_orders = n()) %>%
+ # group by aisle
+ group_by(aisle) %>%
+ # get items with largest order number in each aisle
+ filter(number_orders == max(number_orders)) %>%
+ # output table
+ knitr::kable()
 
 ```
+
+Light brown sugar, snack sticks chicken & rice recipe dog treats, organic baby spinach are most ordered items in the corresponding three aisle. Organic baby spinach greatly outnumbers the other two.
 
 *Q4. Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).*
 
-```{r}
-instacart %>% filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% group_by(product_name, order_dow) %>% summarize(mean_hour = mean(order_hour_of_day)) %>% spread(key = order_dow, value = mean_hour) %>% knitr::kable()
+```{r p2_q4_table}
+instacart %>%
+ # get the products
+ filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+ # group by day of week and product name
+ group_by(product_name, order_dow) %>%
+ # get mean hours for each group
+ summarize(mean_hour = mean(order_hour_of_day)) %>%
+ # make human readable table
+ spread(key = order_dow, value = mean_hour) %>%
+ # output table
+ knitr::kable()
 
 
 ```
 
+People buy ice cream late from Monday to Thursday, early during weekends and Friday.
+People buy apples around 2:00 pm in Wednesday and Sunday, but around noon for the rests.
 
 
 ## Problem 3
@@ -183,7 +255,10 @@ instacart %>% filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")
 ### Data loading
 
 ```{r}
-ny_noaa <- p8105.datasets::ny_noaa %>% separate(col = date, into = c("year", "month", "day"), sep = "-") %>% rename(prcp_01mm = prcp, snow_mm = snow, snwd_mm = snwd) %>% mutate(tmax = as.integer(tmax), tmin = as.integer(tmin))
+ny_noaa <- p8105.datasets::ny_noaa %>%
+ separate(col = date, into = c("year", "month", "day"), sep = "-") %>%
+ rename(prcp_01mm = prcp, snow_mm = snow, snwd_mm = snwd) %>%
+ mutate(tmax = as.integer(tmax), tmin = as.integer(tmin))
 
 ```
 
@@ -193,7 +268,10 @@ The dataset has many missing values. Most part are zeros. Most area are so warm 
 *Q2. Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?*
 
 ```{r}
-ny_noaa %>% filter(month %in% c("01", "07")) %>% group_by(year, month) %>% summarize(mean_temp = mean(tmax, na.rm = TRUE)) %>% ggplot(aes(y = mean_temp, x = year)) + geom_point() + facet_grid(. ~ month)
+ny_noaa %>% filter(month %in% c("01", "07")) %>%
+ group_by(year, month) %>%
+ summarize(mean_temp = mean(tmax, na.rm = TRUE)) %>%
+ ggplot(aes(y = mean_temp, x = year)) + geom_point() + facet_grid(. ~ month)
 
 ```
 
