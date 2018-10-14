@@ -10,23 +10,15 @@ knitr::opts_chunk$set(
  echo = TRUE,
  fig.width = 8,
  # fig proportion set to golden ratio
- fig.asp = .618,
+ fig.asp = 0.618,
  out.width = "100%",
- # scientific notation
- options(scipen = 1),
- # round to 2 digits
- options(digits = 2),
+ # set cache to reduce time
  cache = TRUE
  
 )
 
 # ggplot2 tibble dplyr tidyr ... etc.
 library(tidyverse)
-
-# install p8105.datasets if not already installed
-if (!"p8105.datasets" %in% installed.packages()) {
-	devtools::install_github("p8105/p8105.datasets")
-}
 
 ```
 
@@ -71,7 +63,7 @@ brfss %>% filter(year == 2002) %>%
           # get states which observed at 7 locations
           filter(locations == 7) %>%
           # output table
-          knitr::kable()
+          knitr::kable(caption = "States Observed", longtable = TRUE)
 ```
 
 Connecticut, Florida, North Carolina are observed at 7 locations.
@@ -89,6 +81,7 @@ brfss %>% distinct(year, state, area) %>%
           # plot the spaghetti plot
           ggplot(aes(x = year, y = n_obs, color = state)) +
           geom_line() +
+          geom_text(aes(label = ifelse(n_obs > 15, state, "")), show.legend = FALSE) +
           labs(
            title = "Unique locations across years for each state",
            x = "Years",
@@ -99,9 +92,13 @@ brfss %>% distinct(year, state, area) %>%
            name = "state",
            discrete = TRUE
           ) +
+          scale_x_continuous(breaks = c(2002:2010)) +
           theme(legend.position = "right", plot.title = element_text(hjust = 0.5))
           
 ```
+
+Florida sharply increased the number of observations of more than 40 locations in year 2007 and 2010, and remained low during other years. New Jersey was on average the mostly observed state, around 20 observations each year started from 2005.
+
 
 *Q3. Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.*
 
@@ -114,10 +111,10 @@ brfss %>% filter(year %in% c(2002, 2006, 2010), response == "Excellent", state =
           # get mean and sd across three years
           summarize(mean = mean(data_value), sd = sd(data_value)) %>% 
           # make a readable table
-          knitr::kable()
+          knitr::kable(digits = 2, caption = "Excellent proportions")
 ```
 
-Since in Bronx, Erie and Monroe, there were only one observation out of three years, so sd are NAs.
+Since in Bronx, Erie and Monroe, there were only one observation out of three years, so sd are NAs. On average the New York County has most people responded excellent and least people responded excellent in Erie County.
 
 *Q4. For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.*
 
@@ -146,6 +143,7 @@ brfss %>% group_by(year, state, response) %>%
           
 ```
 
+The proportions of overall responses from high to low is "very good", "good", "excellent", "fair", "poor". It is worthy noting that he proportions of "excellent" are very slightly decreasing along the years. For each response there are some outliers in some states during some years.
 
 ## Problem 2
 
@@ -180,7 +178,7 @@ There are 134 aisles. Fresh vegetables and fresh fruits aisles are ordered the m
 
 *Q2. Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.*
 
-```{r q2_aisle_plot}
+```{r q2_aisle_plot, fig.width = 8, fig.asp = 1.618}
 
 instacart %>%
  # group by aisle
@@ -202,7 +200,8 @@ instacart %>%
     caption = "Data from the instacart"
     ) +
    # make title in the middle
-   theme(plot.title = element_text(hjust = 0.5))
+   theme(plot.title = element_text(hjust = 0.5),
+         plot.margin = )
    
 ```
 
@@ -211,7 +210,6 @@ Vegetables, fruits, sparkling water, yogurt, cheese, milk, chips, pretzels, brea
 *Q3. Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”*
 
 ```{r q3_table}
-library(kableExtra)
 instacart %>%
  # get the three aisle
  filter(aisle %in% c("baking ingredients",
@@ -226,9 +224,8 @@ instacart %>%
  # get items with largest order number in each aisle
  filter(number_orders == max(number_orders)) %>%
  # output table
- knitr::kable(caption = "Most Popular Item Aisles", format = "latex") %>% 
-   kable_styling(latex_options = "hold_position")
-
+ knitr::kable(caption = "Most Popular Item Aisles",
+              digits = 2)
 
 
 ```
@@ -248,7 +245,7 @@ instacart %>%
  # make human readable table
  spread(key = order_dow, value = mean_hour) %>%
  # output table
- knitr::kable()
+ knitr::kable(escape = FALSE)
 
 
 ```
