@@ -9,8 +9,15 @@ output: github_document
 knitr::opts_chunk$set(
  echo = TRUE,
  fig.width = 8,
+ # fig proportion set to golden ratio
  fig.asp = .618,
- out.width = "100%"
+ out.width = "100%",
+ # scientific notation
+ options(scipen = 1),
+ # round to 2 digits
+ options(digits = 2),
+ cache = TRUE
+ 
 )
 
 # ggplot2 tibble dplyr tidyr ... etc.
@@ -164,7 +171,8 @@ instacart %>%
 instacart %>%
  group_by(aisle) %>%
  summarize(n_order = n()) %>%
- arrange(desc(n_order))
+ arrange(desc(n_order)) %>% 
+ top_n(10)
  
 ```
 
@@ -173,8 +181,6 @@ There are 134 aisles. Fresh vegetables and fresh fruits aisles are ordered the m
 *Q2. Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.*
 
 ```{r q2_aisle_plot}
-# package for label points
-library(ggrepel)
 
 instacart %>%
  # group by aisle
@@ -182,15 +188,12 @@ instacart %>%
  # number of orders for each aisle
  summarize(n_order = n()) %>%
  # sort according to number of orders
- mutate(rank = rank(desc(n_order))) %>% 
+ mutate(rank = rank(n_order)) %>% 
  # plot scatterplot
- ggplot(aes(x = rank, y = log(n_order))) +
+ ggplot(aes(x = reorder(aisle, rank), y = log(n_order))) +
    # plot points
-   geom_point(size = 4, alpha = 0.5) +
-   # label top 10 points
-   geom_text_repel(aes(label = ifelse(rank < 11, aisle, "")), vjust = 1) + 
-   # range limits
-   ylim(c(5,13)) +
+   geom_bar(stat = "identity", aes(color = log(n_order))) +
+   coord_flip() +
    # add labels and titles
    labs(
     title = "Number of orders for each aisle (order > 20000 are labelled)",
@@ -208,6 +211,7 @@ Vegetables, fruits, sparkling water, yogurt, cheese, milk, chips, pretzels, brea
 *Q3. Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”*
 
 ```{r q3_table}
+library(kableExtra)
 instacart %>%
  # get the three aisle
  filter(aisle %in% c("baking ingredients",
@@ -222,7 +226,10 @@ instacart %>%
  # get items with largest order number in each aisle
  filter(number_orders == max(number_orders)) %>%
  # output table
- knitr::kable()
+ knitr::kable(caption = "Most Popular Item Aisles", format = "latex") %>% 
+   kable_styling(latex_options = "hold_position")
+
+
 
 ```
 
@@ -260,18 +267,56 @@ ny_noaa <- p8105.datasets::ny_noaa %>%
  rename(prcp_01mm = prcp, snow_mm = snow, snwd_mm = snwd) %>%
  mutate(tmax = as.integer(tmax), tmin = as.integer(tmin))
 
+ny_noaa %>% count(is.na(snow_mm))
+ny_noaa %>% count(is.na(snwd_mm))
+ny_noaa %>% count(is.na(prcp_01mm))
+ny_noaa %>% count(is.na(tmax))
+ny_noaa %>% count(is.na(tmin))
 ```
 
+The dataset has 1384617 entries. 747 unique stations. There are 9 variables, station id, date of observation, precipitation (in 0.1 mm), snowfall (in mm), snow depth (in mm), max temperature (0.1 ºC), min temperature (0.1 ºC). Many stations only collect a subset of these data for some time. There are around 2.2 million (85.3%) entries without snowfall observations, 2.0 million (77.2%) entries without snow depth information, 2.5 million (94.4%) entries without precipitation data, 1.46 million (56.3%) without temperature data.
+.
+
+
 *Q1. For snowfall, what are the most commonly observed values? Why?*
-The dataset has many missing values. Most part are zeros. Most area are so warm that no snow can form.
+
+```{r}
+
+ny_noaa %>% 
+ filter(!is.na(tmin), !is.na(snow_mm)) %>% 
+ mutate(tmin_neg100 = tmin > -100) %>% 
+ group_by(tmin_neg100) %>% 
+ count(snow_mm == 0)
+ 
+ny_noaa %>% 
+ filter(!is.na(tmin), !is.na(snow_mm)) %>% 
+ mutate(tmin_0 = tmin > 0) %>% 
+ group_by(tmin_0) %>% 
+ count(snow_mm == 0)
+
+ny_noaa %>% 
+ filter(!is.na(tmin), !is.na(snow_mm)) %>% 
+ mutate(tmin_100 = tmin > 100) %>% 
+ group_by(tmin_100) %>% 
+ count(snow_mm == 0)
+ 
+ 
+```
+
+
 
 *Q2. Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?*
 
 ```{r}
 ny_noaa %>% filter(month %in% c("01", "07")) %>%
- group_by(year, month) %>%
+ group_by(id, month) %>%
  summarize(mean_temp = mean(tmax, na.rm = TRUE)) %>%
- ggplot(aes(y = mean_temp, x = year)) + geom_point() + facet_grid(. ~ month)
+ filter(!is.na(mean_temp)) %>% 
+ ggplot(aes(y = mean_temp, x = id)) +
+   geom_point() +
+   geom_text(aes(label = ifelse(mean_temp < -60, id, "")), vjust = 1) +
+   facet_grid(. ~ month)
+
 
 ```
 
@@ -281,10 +326,8 @@ ny_noaa %>% filter(month %in% c("01", "07")) %>%
 tmax_tmin <- ny_noaa %>% ggplot(aes(x = tmax, y = tmin)) + geom_density_2d()
 
 snf <- ny_noaa %>% filter(snow_mm > 0, snow_mm < 100) %>% 
-                   group_by(year) %>% 
-                   summarize(mean_snow_mm = mean(snow_mm)) %>% 
-                   ggplot(aes(x = year, y = mean_snow_mm)) +
-                     geom_point()
+                   ggplot(aes(x = year, y = snow_mm)) +
+                     geom_boxplot()
 library(patchwork)
 tmax_tmin + snf
 
