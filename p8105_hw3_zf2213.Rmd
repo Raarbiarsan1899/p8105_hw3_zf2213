@@ -110,14 +110,14 @@ Florida sharply increased the number of observations of more than 40 locations i
 # filter out year 2002, 2006, 2010 in NY state with response "Excellent"
 brfss %>% filter(year %in% c(2002, 2006, 2010), response == "Excellent", state == "NY") %>% 
           # group according to area
-          group_by(area) %>% 
+          group_by(year) %>% 
           # get mean and sd across three years
           summarize(mean = mean(data_value), sd = sd(data_value)) %>% 
           # make a readable table
           knitr::kable(digits = 2, caption = "Excellent proportions")
 ```
 
-Since in Bronx, Erie and Monroe, there were only one observation out of three years, so sd are NAs. On average the New York County has most people responded excellent and least people responded excellent in Erie County.
+Year 2002 has highest mean proportion of Excellent response, and largest standard deviation. Year 2006 has lowest mean proportion of excellent response, year 2010 has smallest standard deviation.
 
 
 **Q4. For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.**
@@ -325,15 +325,16 @@ Divide tmin, tmax, prcp by 10 to be in ºC and mm units. There is a snow value l
 ```{r p3_q2}
 # get January and July
 ny_noaa %>% filter(month %in% c("01", "07")) %>%
- # group according to year and month
- group_by(year, month) %>%
- # get mean for each group
- summarize(mean_temp = mean(tmax, na.rm = TRUE)) %>%
  # recode the month name
  mutate(month = recode(month, "01" = "Jan", "07" = "Jul")) %>%
+ # group according to year and month
+ group_by(year, month, id) %>%
+ # get mean for each group
+ summarize(mean_temp = mean(tmax, na.rm = TRUE)) %>%
  # plot multi facets plot
- ggplot(aes(y = mean_temp, x = year)) +
-   geom_point() +
+ ggplot(aes(y = mean_temp, x = year, group = id, color = id)) +
+   geom_line(alpha = 0.3, show.legend = FALSE) +
+   geom_point(alpha = 0.3, show.legend = FALSE) +
    # seperate by month
    facet_grid(. ~ month) +
    scale_x_discrete(breaks = seq(1981,2010,2)) +
@@ -349,7 +350,7 @@ ny_noaa %>% filter(month %in% c("01", "07")) %>%
 
 ```
 
-Max temperatures are high in July , around 27.5 ºC, and low in Janurary, around 0 ºC, which are quite reasonable. There is no obvious outlier.
+Max temperatures are high in July , around 27.5 ºC, and low in Janurary, around 0 ºC, which are quite reasonable. The range of temperature in Janurary is high, and low in July. In 1994 and 2004 the minimal temperature is extremely low. There are very a few outliers. 
 
 
 **Q3. Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.**
@@ -359,7 +360,7 @@ Max temperatures are high in July , around 27.5 ºC, and low in Janurary, around
 tmax_tmin <- ny_noaa %>%
              ggplot(aes(x = tmax, y = tmin)) +
                # using two dimensional density plot
-               geom_density_2d() +
+               geom_hex() +
                labs(
                  title = "Max vs Min Temperature",
                  y = "Min temperature (ºC)",
@@ -382,6 +383,7 @@ snf <- ny_noaa %>%
          ) +
          theme(axis.text.x = element_text(angle = 30))
 
+# for multipanel plotting
 library(patchwork)
 tmax_tmin / snf
 
