@@ -68,7 +68,6 @@ brfss %>% filter(year == 2002) %>%
 
 Connecticut, Florida, North Carolina are observed at 7 locations.
 
-
 *Q2. Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.*
 
 ```{r p1_q2_spaghetti_plot}
@@ -152,9 +151,12 @@ The proportions of overall responses from high to low is "very good", "good", "e
 ```{r p2_loading_data}
 # load data
 instacart <- p8105.datasets::instacart
+
 ```
 
-This dataset has 1384617 entries. All the entries are the order information from registered customers. Each row describes an item ordered by a customer. For item, there are columns describe the name, department, aisle, and corresponding ID of the item. For order include the information about the customer ID, nth order from the customer, days since last order (frequency of order), time of the order in a week, time of the order in a day.
+This dataset has 1384617 entries with 15 variables. All the entries are the order information from registered customers. Each row describes an item ordered by a customer. There are columns describe the product name, department, aisle, and corresponding IDs  of the item. There are also order information including the customer ID, order ID, nth order from the customer, if it is reordered from that customer, days since last order (frequency of order), time of the order in a week, time of the order in a day. eval_set indicating whether this dataset is a training set or validation set. It seems that this set is a training set.
+
+For instance the ID: 36 order, it was placed by customer ID: 79431, at 18:00 pm on Saturday, and it was the 23th reorder from that customer, 30 days since his/her last order. The customer ordered 8 items, among which 6 were reordered from that customer. Of the eight items, 3 from egg/dairy department, 3 from produce department. There are more detailed information such as aisle, product name and product id, etc.
 
 *Q1. How many aisles are there, and which aisles are the most items ordered from?*
 
@@ -165,16 +167,22 @@ instacart %>%
  nrow()
  
 
-# get number of aisles
+# get which aisles are ordered most from
 instacart %>%
+ # group by aisle
  group_by(aisle) %>%
+ # number of entries for each aisle
  summarize(n_order = n()) %>%
+ # sort from high to low
  arrange(desc(n_order)) %>% 
- top_n(10)
+ # top 10 aisles
+ top_n(10) %>% 
+ # output into table
+ knitr::kable(caption = "Top 10 Aisles", digits = 2)
  
 ```
 
-There are 134 aisles. Fresh vegetables and fresh fruits aisles are ordered the most.
+There are 134 aisles. Fresh vegetables and fresh fruits aisles are ordered the most. All the top 10 aisles are food.
 
 *Q2. Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.*
 
@@ -190,22 +198,22 @@ instacart %>%
  # plot scatterplot
  ggplot(aes(x = reorder(aisle, rank), y = log(n_order))) +
    # plot points
-   geom_bar(stat = "identity", aes(color = log(n_order))) +
+   geom_bar(stat = "identity", aes(fill = log(n_order)), show.legend = FALSE) +
+   # flip coordinates
    coord_flip() +
    # add labels and titles
    labs(
-    title = "Number of orders for each aisle (order > 20000 are labelled)",
-    x = "Percent rank of aisle order number",
+    title = "Number of orders for each aisle",
     y = "Log transformed order numbers",
+    x = "Aisles",
     caption = "Data from the instacart"
     ) +
    # make title in the middle
-   theme(plot.title = element_text(hjust = 0.5),
-         plot.margin = )
+   theme(plot.title = element_text(hjust = 0.5))
    
 ```
 
-Vegetables, fruits, sparkling water, yogurt, cheese, milk, chips, pretzels, bread, soy are ordered most. All of them are food!
+Vegetables, fruits, sparkling water, yogurt, cheese, milk, chips, pretzels, bread, soy are ordered most. Personal care, baby goods, beauty, kitchen supplies are among the least ordered items. People order through instacart mainly for food, not for baby, beauty, or personal care.
 
 *Q3. Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”*
 
@@ -224,9 +232,7 @@ instacart %>%
  # get items with largest order number in each aisle
  filter(number_orders == max(number_orders)) %>%
  # output table
- knitr::kable(caption = "Most Popular Item Aisles",
-              digits = 2)
-
+ knitr::kable(caption = "Most Popular Item Aisles")
 
 ```
 
@@ -235,6 +241,7 @@ Light brown sugar, snack sticks chicken & rice recipe dog treats, organic baby s
 *Q4. Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).*
 
 ```{r p2_q4_table}
+
 instacart %>%
  # get the products
  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
@@ -242,10 +249,12 @@ instacart %>%
  group_by(product_name, order_dow) %>%
  # get mean hours for each group
  summarize(mean_hour = mean(order_hour_of_day)) %>%
+ # change number to weekdays
+ mutate(order_dow = recode_factor(order_dow, "1" = "mon", "2" = "tue", "3" = "wed", "4" = "thr", "5" = "fri", "6" = "sat", "0" = "sun")) %>%
  # make human readable table
  spread(key = order_dow, value = mean_hour) %>%
  # output table
- knitr::kable(escape = FALSE)
+ knitr::kable(digits = 2, caption = "Mean hour of the day placing the order")
 
 
 ```
@@ -258,76 +267,105 @@ People buy apples around 2:00 pm in Wednesday and Sunday, but around noon for th
 
 ### Data loading
 
-```{r}
-ny_noaa <- p8105.datasets::ny_noaa %>%
- separate(col = date, into = c("year", "month", "day"), sep = "-") %>%
- rename(prcp_01mm = prcp, snow_mm = snow, snwd_mm = snwd) %>%
- mutate(tmax = as.integer(tmax), tmin = as.integer(tmin))
+```{r loading_data}
+# load data
+ny_noaa <- p8105.datasets::ny_noaa
 
-ny_noaa %>% count(is.na(snow_mm))
-ny_noaa %>% count(is.na(snwd_mm))
-ny_noaa %>% count(is.na(prcp_01mm))
-ny_noaa %>% count(is.na(tmax))
-ny_noaa %>% count(is.na(tmin))
+# get na number and proportions
+cbind(
+ "na" = sapply(ny_noaa, FUN = function(x) {sum(is.na(x))}),
+ "proportion" = sapply(ny_noaa, FUN = function(x) {sum(is.na(x)) / length(x)})
+) %>% knitr::kable()
+
 ```
 
-The dataset has 1384617 entries. 747 unique stations. There are 9 variables, station id, date of observation, precipitation (in 0.1 mm), snowfall (in mm), snow depth (in mm), max temperature (0.1 ºC), min temperature (0.1 ºC). Many stations only collect a subset of these data for some time. There are around 2.2 million (85.3%) entries without snowfall observations, 2.0 million (77.2%) entries without snow depth information, 2.5 million (94.4%) entries without precipitation data, 1.46 million (56.3%) without temperature data.
-.
+The dataset has 2595176 entries. 747 unique stations. There are 9 variables, station id (character), date of observation (date), precipitation (in 0.1 mm, integer), snowfall (in mm, integer), snow depth (in mm, integer), max temperature (in 0.1 ºC, integer), min temperature (0.1 ºC, integer). 
 
+Many stations only collect a subset of these data for some time. There are around 0.145 million (5.62%) entries without precipitation data, 0.38 million (14.69%) entries without snowfall observations, 0.59 million (22.80%) entries without snow depth information, 1.134 million (43.7%) without temperature data.
 
 *Q1. For snowfall, what are the most commonly observed values? Why?*
 
-```{r}
+```{r data_cleaning}
+ny_noaa <- ny_noaa %>% 
+ # seperate data into year month day 
+ separate(col = date, into = c("year", "month", "day"), sep = "-") %>%
+ # change tmax and tmin to ºC degree, precipitation in mm
+ mutate(tmax = as.integer(tmax) / 10, tmin = as.integer(tmin) / 10, prcp = prcp / 10,
+        # get rid of negative snow and snwd value
+        snow = replace(snow, which(snow < 0), NA))
 
 ny_noaa %>% 
- filter(!is.na(tmin), !is.na(snow_mm)) %>% 
- mutate(tmin_neg100 = tmin > -100) %>% 
- group_by(tmin_neg100) %>% 
- count(snow_mm == 0)
- 
-ny_noaa %>% 
- filter(!is.na(tmin), !is.na(snow_mm)) %>% 
+ filter(!is.na(tmin), !is.na(snow)) %>% 
  mutate(tmin_0 = tmin > 0) %>% 
  group_by(tmin_0) %>% 
- count(snow_mm == 0)
+ count(snow == 0)
 
-ny_noaa %>% 
- filter(!is.na(tmin), !is.na(snow_mm)) %>% 
- mutate(tmin_100 = tmin > 100) %>% 
- group_by(tmin_100) %>% 
- count(snow_mm == 0)
- 
- 
 ```
 
-
+Divide tmin, tmax, prcp by 10 to be in ºC and mm units. There is a snow value less than 0, which is not reasonable, so I change it to NA. For snowfall variable, most of them are zero because when minimal temperature is larger than 0 ºC, very little snow can form.
 
 *Q2. Make a two-panel plot showing the average temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?*
 
-```{r}
+```{r p3_q2}
+# get January and July
 ny_noaa %>% filter(month %in% c("01", "07")) %>%
- group_by(id, month) %>%
+ # group according to year and month
+ group_by(year, month) %>%
+ # get mean for each group
  summarize(mean_temp = mean(tmax, na.rm = TRUE)) %>%
- filter(!is.na(mean_temp)) %>% 
- ggplot(aes(y = mean_temp, x = id)) +
+ # recode the month name
+ mutate(month = recode(month, "01" = "Jan", "07" = "Jul")) %>%
+ # plot multi facets plot
+ ggplot(aes(y = mean_temp, x = year)) +
    geom_point() +
-   geom_text(aes(label = ifelse(mean_temp < -60, id, "")), vjust = 1) +
-   facet_grid(. ~ month)
-
+   # seperate by month
+   facet_grid(. ~ month) +
+   labs(
+      title = "Mean temperature in January and July",
+      y = "Mean temperature (ºC)",
+      x = "Year",
+      caption = "Data from the NY_noaa"
+    ) +
+   # make title in the middle
+   theme(plot.title = element_text(hjust = 0.5),
+         axis.text.x = element_text(angle = 45))
 
 ```
+
+Max temperatures are high in July , around 27.5 ºC, and low in Janurary, around 0 ºC, which are quite reasonable. There is no obvious outlier.
 
 *Q3. Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.*
 
-```{r}
-tmax_tmin <- ny_noaa %>% ggplot(aes(x = tmax, y = tmin)) + geom_density_2d()
+```{r p3_q3}
+# 2d density plot to show tmax ~ tmin relation
+tmax_tmin <- ny_noaa %>%
+             ggplot(aes(x = tmax, y = tmin)) +
+               # using two dimensional density plot
+               geom_density_2d() +
+               labs(
+                 title = "Max vs Min Temperature",
+                 y = "Min temperature (ºC)",
+                 x = "Max temperature (ºC)",
+                 caption = "Data from the ny_noaa"
+                )
 
-snf <- ny_noaa %>% filter(snow_mm > 0, snow_mm < 100) %>% 
-                   ggplot(aes(x = year, y = snow_mm)) +
-                     geom_boxplot()
+# boxplot to show distribution across years
+snf <- ny_noaa %>%
+       # get snowfall larger than 0 and smaller than 100
+       filter(snow > 0, snow < 100) %>%
+       ggplot(aes(x = year, y = snow)) +
+         geom_boxplot() + 
+         labs(
+          title = "Distribution of Snowfall Each Year",
+          x = "Year",
+          y = "Snowfall (mm)",
+          caption = "Data from ny_noaa"
+         )
+
 library(patchwork)
-tmax_tmin + snf
+tmax_tmin / snf
+
 
 ```
 
-
+The tmax vs tmin density plot shows obviously two clusters, one around (5, 0) and another around (25, 15). The first one may refer to cold areas while the second one refer to warm areas. THe distribution of snowfall for each year has equal median at 25 mm
